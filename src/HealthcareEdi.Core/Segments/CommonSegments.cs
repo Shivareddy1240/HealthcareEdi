@@ -9,7 +9,7 @@ namespace HealthcareEdi.Core.Segments;
 public abstract class EdiSegmentBase
 {
     /// <summary>Raw elements as parsed from the segment string.</summary>
-    public string[] RawElements { get; protected set; } = [];
+    public string[] RawElements { get; set; } = [];
 
     /// <summary>Gets element value at 1-based position, or empty string if not present.</summary>
     protected string Element(int position)
