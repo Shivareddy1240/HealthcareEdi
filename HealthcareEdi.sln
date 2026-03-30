@@ -34,6 +34,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HealthcareEdi.ConsoleDemo",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Healthcareedi.transactions.835.tests", "tests\Healthcareedi.transactions.835.tests\Healthcareedi.transactions.835.tests.csproj", "{317AB28F-412F-48E7-84B4-16E8955AB16C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Healthcareedi.transactions.834.tests", "tests\Healthcareedi.transactions.834.tests\Healthcareedi.transactions.834.tests.csproj", "{A04F8D9D-497E-430B-869C-FF66091D9757}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -92,6 +94,10 @@ Global
 		{317AB28F-412F-48E7-84B4-16E8955AB16C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{317AB28F-412F-48E7-84B4-16E8955AB16C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{317AB28F-412F-48E7-84B4-16E8955AB16C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A04F8D9D-497E-430B-869C-FF66091D9757}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A04F8D9D-497E-430B-869C-FF66091D9757}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A04F8D9D-497E-430B-869C-FF66091D9757}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A04F8D9D-497E-430B-869C-FF66091D9757}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -110,6 +116,7 @@ Global
 		{C1000002-0000-0000-0000-000000000002} = {A1B2C3D4-0002-0002-0002-000000000002}
 		{D1000001-0000-0000-0000-000000000001} = {A1B2C3D4-0003-0003-0003-000000000003}
 		{317AB28F-412F-48E7-84B4-16E8955AB16C} = {A1B2C3D4-0002-0002-0002-000000000002}
+		{A04F8D9D-497E-430B-869C-FF66091D9757} = {A1B2C3D4-0002-0002-0002-000000000002}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7E483F8B-50A8-41FF-82E1-9F82CFC2D845}
