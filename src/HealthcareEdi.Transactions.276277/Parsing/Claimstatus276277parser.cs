@@ -60,7 +60,7 @@ public sealed class ClaimStatus276277Parser
         };
     }
 
-    private T ParseTransaction<T>(TransactionSegmentGroup group, DelimiterContext delimiters) where T : ClaimStatusBaseModel, new()
+    internal T ParseTransaction<T>(TransactionSegmentGroup group, DelimiterContext delimiters) where T : ClaimStatusBaseModel, new()
     {
         var model = new T();
         var stElements = delimiters.SplitElements(group.Segments[0]);
@@ -189,5 +189,38 @@ public sealed class ClaimStatus276277Parser
         if (_options.ValidationMode == ValidationMode.Strict && model.ValidationIssues.Any(i => i.Severity == ValidationSeverity.Error))
             throw new EdiValidationException(model.ValidationIssues);
         return model;
+    }
+
+    // ── Streaming Methods ───────────────────────────────────────
+
+    private async IAsyncEnumerable<T> StreamInternal<T>(string filePath) where T : ClaimStatusBaseModel, new()
+    {
+        var tokenizer = new StreamingEdiTokenizer(_options);
+        await foreach (var txnGroup in tokenizer.TokenizeFileAsync(filePath))
+        {
+            T? model = null;
+            try
+            {
+                var group = new TransactionSegmentGroup { Segments = txnGroup.Segments, IsaElements = txnGroup.IsaElements, GsElements = txnGroup.GsElements };
+                model = ParseTransaction<T>(group, txnGroup.Delimiters);
+            }
+            catch { continue; }
+            if (model != null) yield return model;
+        }
+    }
+
+    public IAsyncEnumerable<ClaimStatus276Model> Parse276FileStreamingAsync(string filePath) => StreamInternal<ClaimStatus276Model>(filePath);
+    public IAsyncEnumerable<ClaimStatus277Model> Parse277FileStreamingAsync(string filePath) => StreamInternal<ClaimStatus277Model>(filePath);
+
+    public IAsyncEnumerable<StreamingBatchResult<ClaimStatus276Model>> Parse276FileInBatchesAsync(string filePath, int batchSize = 500)
+    {
+        var processor = new EdiBatchProcessor<ClaimStatus276Model>(batchSize, _options);
+        return processor.ProcessFileAsync(filePath, (g, d) => ParseTransaction<ClaimStatus276Model>(g, d));
+    }
+
+    public IAsyncEnumerable<StreamingBatchResult<ClaimStatus277Model>> Parse277FileInBatchesAsync(string filePath, int batchSize = 500)
+    {
+        var processor = new EdiBatchProcessor<ClaimStatus277Model>(batchSize, _options);
+        return processor.ProcessFileAsync(filePath, (g, d) => ParseTransaction<ClaimStatus277Model>(g, d));
     }
 }

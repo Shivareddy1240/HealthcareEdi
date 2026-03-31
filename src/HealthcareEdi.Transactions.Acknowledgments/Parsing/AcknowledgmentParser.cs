@@ -42,7 +42,7 @@ public sealed class AcknowledgmentParser
         };
     }
 
-    private Acknowledgment999Model Parse999Txn(TransactionSegmentGroup group, DelimiterContext delimiters)
+    internal Acknowledgment999Model Parse999Txn(TransactionSegmentGroup group, DelimiterContext delimiters)
     {
         var model = new Acknowledgment999Model();
         model.TransactionSetHeader = StSegment.Parse(delimiters.SplitElements(group.Segments[0]));
@@ -87,5 +87,55 @@ public sealed class AcknowledgmentParser
             }
         }
         return model;
+    }
+
+    // ── Streaming Methods ───────────────────────────────────────
+
+    /// <summary>Streams a 999/997 file transaction-by-transaction.</summary>
+    public async IAsyncEnumerable<Acknowledgment999Model> Parse999FileStreamingAsync(string filePath)
+    {
+        var tokenizer = new StreamingEdiTokenizer(_options);
+        await foreach (var txnGroup in tokenizer.TokenizeFileAsync(filePath))
+        {
+            Acknowledgment999Model? model = null;
+            try
+            {
+                var group = new TransactionSegmentGroup { Segments = txnGroup.Segments, IsaElements = txnGroup.IsaElements, GsElements = txnGroup.GsElements };
+                model = Parse999Txn(group, txnGroup.Delimiters);
+            }
+            catch { continue; }
+            if (model != null) yield return model;
+        }
+    }
+
+    /// <summary>Streams a 999/997 from a Stream.</summary>
+    public async IAsyncEnumerable<Acknowledgment999Model> Parse999StreamingAsync(Stream stream)
+    {
+        var tokenizer = new StreamingEdiTokenizer(_options);
+        await foreach (var txnGroup in tokenizer.TokenizeAsync(stream))
+        {
+            Acknowledgment999Model? model = null;
+            try
+            {
+                var group = new TransactionSegmentGroup { Segments = txnGroup.Segments, IsaElements = txnGroup.IsaElements, GsElements = txnGroup.GsElements };
+                model = Parse999Txn(group, txnGroup.Delimiters);
+            }
+            catch { continue; }
+            if (model != null) yield return model;
+        }
+    }
+
+    /// <summary>Processes a 999/997 file in configurable batches.</summary>
+    public IAsyncEnumerable<StreamingBatchResult<Acknowledgment999Model>> Parse999FileInBatchesAsync(string filePath, int batchSize = 500)
+    {
+        var processor = new EdiBatchProcessor<Acknowledgment999Model>(batchSize, _options);
+        return processor.ProcessFileAsync(filePath, Parse999Txn);
+    }
+
+    /// <summary>Processes a 999/997 stream in configurable batches.</summary>
+    public IAsyncEnumerable<StreamingBatchResult<Acknowledgment999Model>> Parse999StreamInBatchesAsync(Stream stream, int batchSize = 500)
+    {
+        var processor = new EdiBatchProcessor<Acknowledgment999Model>(batchSize, _options);
+        return processor.ProcessAsync(stream, Parse999Txn);
     }
 }

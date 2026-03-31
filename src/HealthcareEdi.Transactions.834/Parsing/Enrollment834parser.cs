@@ -66,7 +66,7 @@ public sealed class Enrollment834Parser
         };
     }
 
-    private Enrollment834Model ParseTransaction(TransactionSegmentGroup group, DelimiterContext delimiters)
+    internal Enrollment834Model ParseTransaction(TransactionSegmentGroup group, DelimiterContext delimiters)
     {
         var segments = group.Segments;
         var model = new Enrollment834Model();
@@ -398,5 +398,55 @@ public sealed class Enrollment834Parser
         if (stSeg == null) return null;
         var elements = delimiters.SplitElements(stSeg);
         return elements.ElementAtOrDefault(2);
+    }
+
+    // ── Streaming Methods ───────────────────────────────────────
+
+    /// <summary>Streams an 834 file transaction-by-transaction.</summary>
+    public async IAsyncEnumerable<Enrollment834Model> ParseFileStreamingAsync(string filePath)
+    {
+        var tokenizer = new StreamingEdiTokenizer(_options);
+        await foreach (var txnGroup in tokenizer.TokenizeFileAsync(filePath))
+        {
+            Enrollment834Model? model = null;
+            try
+            {
+                var group = new TransactionSegmentGroup { Segments = txnGroup.Segments, IsaElements = txnGroup.IsaElements, GsElements = txnGroup.GsElements };
+                model = ParseTransaction(group, txnGroup.Delimiters);
+            }
+            catch { continue; }
+            if (model != null) yield return model;
+        }
+    }
+
+    /// <summary>Streams an 834 file from a Stream.</summary>
+    public async IAsyncEnumerable<Enrollment834Model> ParseStreamingAsync(Stream stream)
+    {
+        var tokenizer = new StreamingEdiTokenizer(_options);
+        await foreach (var txnGroup in tokenizer.TokenizeAsync(stream))
+        {
+            Enrollment834Model? model = null;
+            try
+            {
+                var group = new TransactionSegmentGroup { Segments = txnGroup.Segments, IsaElements = txnGroup.IsaElements, GsElements = txnGroup.GsElements };
+                model = ParseTransaction(group, txnGroup.Delimiters);
+            }
+            catch { continue; }
+            if (model != null) yield return model;
+        }
+    }
+
+    /// <summary>Processes an 834 file in configurable batches.</summary>
+    public IAsyncEnumerable<StreamingBatchResult<Enrollment834Model>> ParseFileInBatchesAsync(string filePath, int batchSize = 500)
+    {
+        var processor = new EdiBatchProcessor<Enrollment834Model>(batchSize, _options);
+        return processor.ProcessFileAsync(filePath, ParseTransaction);
+    }
+
+    /// <summary>Processes an 834 stream in configurable batches.</summary>
+    public IAsyncEnumerable<StreamingBatchResult<Enrollment834Model>> ParseStreamInBatchesAsync(Stream stream, int batchSize = 500)
+    {
+        var processor = new EdiBatchProcessor<Enrollment834Model>(batchSize, _options);
+        return processor.ProcessAsync(stream, ParseTransaction);
     }
 }

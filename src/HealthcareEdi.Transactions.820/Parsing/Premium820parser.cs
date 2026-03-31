@@ -43,7 +43,7 @@ public sealed class Premium820Parser
         };
     }
 
-    private PremiumPayment820Model ParseTxn(TransactionSegmentGroup group, DelimiterContext delimiters)
+    internal PremiumPayment820Model ParseTxn(TransactionSegmentGroup group, DelimiterContext delimiters)
     {
         var model = new PremiumPayment820Model();
         model.TransactionSetHeader = StSegment.Parse(delimiters.SplitElements(group.Segments[0]));
@@ -126,4 +126,54 @@ public sealed class Premium820Parser
         IdCodeQualifier = elements.ElementAtOrDefault(3) ?? "",
         IdCode = elements.ElementAtOrDefault(4) ?? "",
     };
+
+    // ── Streaming Methods ───────────────────────────────────────
+
+    /// <summary>Streams an 820 file transaction-by-transaction.</summary>
+    public async IAsyncEnumerable<PremiumPayment820Model> ParseFileStreamingAsync(string filePath)
+    {
+        var tokenizer = new StreamingEdiTokenizer(_options);
+        await foreach (var txnGroup in tokenizer.TokenizeFileAsync(filePath))
+        {
+            PremiumPayment820Model? model = null;
+            try
+            {
+                var group = new TransactionSegmentGroup { Segments = txnGroup.Segments, IsaElements = txnGroup.IsaElements, GsElements = txnGroup.GsElements };
+                model = ParseTxn(group, txnGroup.Delimiters);
+            }
+            catch { continue; }
+            if (model != null) yield return model;
+        }
+    }
+
+    /// <summary>Streams an 820 file from a Stream.</summary>
+    public async IAsyncEnumerable<PremiumPayment820Model> ParseStreamingAsync(Stream stream)
+    {
+        var tokenizer = new StreamingEdiTokenizer(_options);
+        await foreach (var txnGroup in tokenizer.TokenizeAsync(stream))
+        {
+            PremiumPayment820Model? model = null;
+            try
+            {
+                var group = new TransactionSegmentGroup { Segments = txnGroup.Segments, IsaElements = txnGroup.IsaElements, GsElements = txnGroup.GsElements };
+                model = ParseTxn(group, txnGroup.Delimiters);
+            }
+            catch { continue; }
+            if (model != null) yield return model;
+        }
+    }
+
+    /// <summary>Processes an 820 file in configurable batches.</summary>
+    public IAsyncEnumerable<StreamingBatchResult<PremiumPayment820Model>> ParseFileInBatchesAsync(string filePath, int batchSize = 500)
+    {
+        var processor = new EdiBatchProcessor<PremiumPayment820Model>(batchSize, _options);
+        return processor.ProcessFileAsync(filePath, ParseTxn);
+    }
+
+    /// <summary>Processes an 820 stream in configurable batches.</summary>
+    public IAsyncEnumerable<StreamingBatchResult<PremiumPayment820Model>> ParseStreamInBatchesAsync(Stream stream, int batchSize = 500)
+    {
+        var processor = new EdiBatchProcessor<PremiumPayment820Model>(batchSize, _options);
+        return processor.ProcessAsync(stream, ParseTxn);
+    }
 }

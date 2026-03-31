@@ -80,7 +80,7 @@ public sealed class Eligibility270271Parser
         };
     }
 
-    private T ParseTransaction<T>(TransactionSegmentGroup group, DelimiterContext delimiters) where T : EligibilityBaseModel, new()
+    internal T ParseTransaction<T>(TransactionSegmentGroup group, DelimiterContext delimiters) where T : EligibilityBaseModel, new()
     {
         var segments = group.Segments;
         var model = new T();
@@ -366,5 +366,65 @@ public sealed class Eligibility270271Parser
         if (stSeg == null) return null;
         var elements = delimiters.SplitElements(stSeg);
         return elements.ElementAtOrDefault(2);
+    }
+
+    // ── Streaming Methods ───────────────────────────────────────
+
+    private async IAsyncEnumerable<T> ParseFileStreamingInternal<T>(string filePath) where T : EligibilityBaseModel, new()
+    {
+        var tokenizer = new StreamingEdiTokenizer(_options);
+        await foreach (var txnGroup in tokenizer.TokenizeFileAsync(filePath))
+        {
+            T? model = null;
+            try
+            {
+                var group = new TransactionSegmentGroup { Segments = txnGroup.Segments, IsaElements = txnGroup.IsaElements, GsElements = txnGroup.GsElements };
+                model = ParseTransaction<T>(group, txnGroup.Delimiters);
+            }
+            catch { continue; }
+            if (model != null) yield return model;
+        }
+    }
+
+    private async IAsyncEnumerable<T> ParseStreamingInternal<T>(Stream stream) where T : EligibilityBaseModel, new()
+    {
+        var tokenizer = new StreamingEdiTokenizer(_options);
+        await foreach (var txnGroup in tokenizer.TokenizeAsync(stream))
+        {
+            T? model = null;
+            try
+            {
+                var group = new TransactionSegmentGroup { Segments = txnGroup.Segments, IsaElements = txnGroup.IsaElements, GsElements = txnGroup.GsElements };
+                model = ParseTransaction<T>(group, txnGroup.Delimiters);
+            }
+            catch { continue; }
+            if (model != null) yield return model;
+        }
+    }
+
+    /// <summary>Streams a 270 file transaction-by-transaction.</summary>
+    public IAsyncEnumerable<Eligibility270Model> Parse270FileStreamingAsync(string filePath) => ParseFileStreamingInternal<Eligibility270Model>(filePath);
+
+    /// <summary>Streams a 271 file transaction-by-transaction.</summary>
+    public IAsyncEnumerable<Eligibility271Model> Parse271FileStreamingAsync(string filePath) => ParseFileStreamingInternal<Eligibility271Model>(filePath);
+
+    /// <summary>Streams a 270 from a Stream.</summary>
+    public IAsyncEnumerable<Eligibility270Model> Parse270StreamingAsync(Stream stream) => ParseStreamingInternal<Eligibility270Model>(stream);
+
+    /// <summary>Streams a 271 from a Stream.</summary>
+    public IAsyncEnumerable<Eligibility271Model> Parse271StreamingAsync(Stream stream) => ParseStreamingInternal<Eligibility271Model>(stream);
+
+    /// <summary>Processes a 270 file in batches.</summary>
+    public IAsyncEnumerable<StreamingBatchResult<Eligibility270Model>> Parse270FileInBatchesAsync(string filePath, int batchSize = 500)
+    {
+        var processor = new EdiBatchProcessor<Eligibility270Model>(batchSize, _options);
+        return processor.ProcessFileAsync(filePath, (g, d) => ParseTransaction<Eligibility270Model>(g, d));
+    }
+
+    /// <summary>Processes a 271 file in batches.</summary>
+    public IAsyncEnumerable<StreamingBatchResult<Eligibility271Model>> Parse271FileInBatchesAsync(string filePath, int batchSize = 500)
+    {
+        var processor = new EdiBatchProcessor<Eligibility271Model>(batchSize, _options);
+        return processor.ProcessFileAsync(filePath, (g, d) => ParseTransaction<Eligibility271Model>(g, d));
     }
 }

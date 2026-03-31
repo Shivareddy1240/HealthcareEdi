@@ -27,8 +27,10 @@ public sealed class Remittance835Parser
 
     /// <summary>
     /// Parses an 835 EDI file and returns a batch result with all remittance transactions.
+    /// For files that fit in memory (up to ~100MB).
     /// </summary>
     public EdiBatchResult<Remittance835Model> ParseFile(string fileContent)
+
     {
         var sw = Stopwatch.StartNew();
         var tokens = _tokenizer.Tokenize(fileContent);
@@ -69,7 +71,7 @@ public sealed class Remittance835Parser
     /// <summary>
     /// Parses a single 835 transaction set (ST through SE).
     /// </summary>
-    private Remittance835Model ParseTransaction(TransactionSegmentGroup group, DelimiterContext delimiters)
+    internal Remittance835Model ParseTransaction(TransactionSegmentGroup group, DelimiterContext delimiters)
     {
         var segments = group.Segments;
         var model = new Remittance835Model();
@@ -347,5 +349,102 @@ public sealed class Remittance835Parser
         if (stSeg == null) return null;
         var elements = delimiters.SplitElements(stSeg);
         return elements.ElementAtOrDefault(2);
+    }
+
+    // ── Streaming Methods (for GB-scale files) ──────────────────
+
+    /// <summary>
+    /// Streams an 835 file transaction-by-transaction using IAsyncEnumerable.
+    /// Memory usage is proportional to the largest single transaction, not the file size.
+    /// 
+    /// Usage:
+    ///   await foreach (var model in parser.ParseFileStreamingAsync("huge_era.835"))
+    ///   {
+    ///       await SaveToDatabase(model);
+    ///       // Previous model's memory is eligible for GC
+    ///   }
+    /// </summary>
+    public async IAsyncEnumerable<Remittance835Model> ParseFileStreamingAsync(string filePath)
+    {
+        var tokenizer = new StreamingEdiTokenizer(_options);
+        await foreach (var txnGroup in tokenizer.TokenizeFileAsync(filePath))
+        {
+            Remittance835Model? model = null;
+            try
+            {
+                var group = new TransactionSegmentGroup
+                {
+                    Segments = txnGroup.Segments,
+                    IsaElements = txnGroup.IsaElements,
+                    GsElements = txnGroup.GsElements,
+                };
+                model = ParseTransaction(group, txnGroup.Delimiters);
+            }
+            catch
+            {
+                // In streaming mode, skip failed transactions
+                // Consumer can use batch processor for error capture
+                continue;
+            }
+
+            if (model != null)
+                yield return model;
+        }
+    }
+
+    /// <summary>
+    /// Streams an 835 file from a Stream.
+    /// </summary>
+    public async IAsyncEnumerable<Remittance835Model> ParseStreamingAsync(Stream stream)
+    {
+        var tokenizer = new StreamingEdiTokenizer(_options);
+        await foreach (var txnGroup in tokenizer.TokenizeAsync(stream))
+        {
+            Remittance835Model? model = null;
+            try
+            {
+                var group = new TransactionSegmentGroup
+                {
+                    Segments = txnGroup.Segments,
+                    IsaElements = txnGroup.IsaElements,
+                    GsElements = txnGroup.GsElements,
+                };
+                model = ParseTransaction(group, txnGroup.Delimiters);
+            }
+            catch { continue; }
+
+            if (model != null)
+                yield return model;
+        }
+    }
+
+    /// <summary>
+    /// Processes an 835 file in configurable batches. Each batch contains up to batchSize
+    /// parsed transactions. Consumer processes one batch, then gets the next.
+    /// 
+    /// Usage:
+    ///   await foreach (var batch in parser.ParseFileInBatchesAsync("huge_era.835", batchSize: 500))
+    ///   {
+    ///       Console.WriteLine($"Batch {batch.BatchNumber}: {batch.Transactions.Count} transactions");
+    ///       await BulkInsertToSql(batch.Transactions);
+    ///       // batch memory released when next batch starts
+    ///       Console.WriteLine($"Progress: {batch.TotalProcessed} processed, more: {batch.HasMore}");
+    ///   }
+    /// </summary>
+    public IAsyncEnumerable<StreamingBatchResult<Remittance835Model>> ParseFileInBatchesAsync(
+        string filePath, int batchSize = 500)
+    {
+        var processor = new EdiBatchProcessor<Remittance835Model>(batchSize, _options);
+        return processor.ProcessFileAsync(filePath, ParseTransaction);
+    }
+
+    /// <summary>
+    /// Processes an 835 stream in configurable batches.
+    /// </summary>
+    public IAsyncEnumerable<StreamingBatchResult<Remittance835Model>> ParseStreamInBatchesAsync(
+        Stream stream, int batchSize = 500)
+    {
+        var processor = new EdiBatchProcessor<Remittance835Model>(batchSize, _options);
+        return processor.ProcessAsync(stream, ParseTransaction);
     }
 }

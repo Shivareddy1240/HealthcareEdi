@@ -70,7 +70,7 @@ public sealed class Claim837Parser
     /// <summary>
     /// Parses a single transaction set (ST through SE) into a Claim837 model.
     /// </summary>
-    private Claim837BaseModel ParseTransaction(TransactionSegmentGroup group, DelimiterContext delimiters)
+    internal Claim837BaseModel ParseTransaction(TransactionSegmentGroup group, DelimiterContext delimiters)
     {
         var segments = group.Segments;
 
@@ -477,5 +477,55 @@ public sealed class Claim837Parser
         if (stSeg == null) return null;
         var elements = delimiters.SplitElements(stSeg);
         return elements.ElementAtOrDefault(2);
+    }
+
+    // ── Streaming Methods (for GB-scale files) ──────────────────
+
+    /// <summary>Streams an 837 file transaction-by-transaction.</summary>
+    public async IAsyncEnumerable<Claim837BaseModel> ParseFileStreamingAsync(string filePath)
+    {
+        var tokenizer = new StreamingEdiTokenizer(_options);
+        await foreach (var txnGroup in tokenizer.TokenizeFileAsync(filePath))
+        {
+            Claim837BaseModel? model = null;
+            try
+            {
+                var group = new TransactionSegmentGroup { Segments = txnGroup.Segments, IsaElements = txnGroup.IsaElements, GsElements = txnGroup.GsElements };
+                model = ParseTransaction(group, txnGroup.Delimiters);
+            }
+            catch { continue; }
+            if (model != null) yield return model;
+        }
+    }
+
+    /// <summary>Streams an 837 file from a Stream.</summary>
+    public async IAsyncEnumerable<Claim837BaseModel> ParseStreamingAsync(Stream stream)
+    {
+        var tokenizer = new StreamingEdiTokenizer(_options);
+        await foreach (var txnGroup in tokenizer.TokenizeAsync(stream))
+        {
+            Claim837BaseModel? model = null;
+            try
+            {
+                var group = new TransactionSegmentGroup { Segments = txnGroup.Segments, IsaElements = txnGroup.IsaElements, GsElements = txnGroup.GsElements };
+                model = ParseTransaction(group, txnGroup.Delimiters);
+            }
+            catch { continue; }
+            if (model != null) yield return model;
+        }
+    }
+
+    /// <summary>Processes an 837 file in configurable batches.</summary>
+    public IAsyncEnumerable<StreamingBatchResult<Claim837BaseModel>> ParseFileInBatchesAsync(string filePath, int batchSize = 500)
+    {
+        var processor = new EdiBatchProcessor<Claim837BaseModel>(batchSize, _options);
+        return processor.ProcessFileAsync(filePath, ParseTransaction);
+    }
+
+    /// <summary>Processes an 837 stream in configurable batches.</summary>
+    public IAsyncEnumerable<StreamingBatchResult<Claim837BaseModel>> ParseStreamInBatchesAsync(Stream stream, int batchSize = 500)
+    {
+        var processor = new EdiBatchProcessor<Claim837BaseModel>(batchSize, _options);
+        return processor.ProcessAsync(stream, ParseTransaction);
     }
 }

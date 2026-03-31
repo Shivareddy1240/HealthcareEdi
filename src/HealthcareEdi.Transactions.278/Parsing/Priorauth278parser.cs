@@ -46,7 +46,7 @@ public sealed class PriorAuth278Parser
         };
     }
 
-    private T ParseTxn<T>(TransactionSegmentGroup group, DelimiterContext delimiters) where T : PriorAuth278BaseModel, new()
+    internal T ParseTxn<T>(TransactionSegmentGroup group, DelimiterContext delimiters) where T : PriorAuth278BaseModel, new()
     {
         var model = new T();
         model.TransactionSetHeader = StSegment.Parse(delimiters.SplitElements(group.Segments[0]));
@@ -147,5 +147,65 @@ public sealed class PriorAuth278Parser
             }
         }
         return model;
+    }
+
+    // ── Streaming Methods ───────────────────────────────────────
+
+    private async IAsyncEnumerable<T> StreamInternal<T>(string filePath) where T : PriorAuth278BaseModel, new()
+    {
+        var tokenizer = new StreamingEdiTokenizer(_options);
+        await foreach (var txnGroup in tokenizer.TokenizeFileAsync(filePath))
+        {
+            T? model = null;
+            try
+            {
+                var group = new TransactionSegmentGroup { Segments = txnGroup.Segments, IsaElements = txnGroup.IsaElements, GsElements = txnGroup.GsElements };
+                model = ParseTxn<T>(group, txnGroup.Delimiters);
+            }
+            catch { continue; }
+            if (model != null) yield return model;
+        }
+    }
+
+    private async IAsyncEnumerable<T> StreamInternalFromStream<T>(Stream stream) where T : PriorAuth278BaseModel, new()
+    {
+        var tokenizer = new StreamingEdiTokenizer(_options);
+        await foreach (var txnGroup in tokenizer.TokenizeAsync(stream))
+        {
+            T? model = null;
+            try
+            {
+                var group = new TransactionSegmentGroup { Segments = txnGroup.Segments, IsaElements = txnGroup.IsaElements, GsElements = txnGroup.GsElements };
+                model = ParseTxn<T>(group, txnGroup.Delimiters);
+            }
+            catch { continue; }
+            if (model != null) yield return model;
+        }
+    }
+
+    /// <summary>Streams a 278 request file transaction-by-transaction.</summary>
+    public IAsyncEnumerable<PriorAuth278RequestModel> ParseRequestFileStreamingAsync(string filePath) => StreamInternal<PriorAuth278RequestModel>(filePath);
+
+    /// <summary>Streams a 278 response file transaction-by-transaction.</summary>
+    public IAsyncEnumerable<PriorAuth278ResponseModel> ParseResponseFileStreamingAsync(string filePath) => StreamInternal<PriorAuth278ResponseModel>(filePath);
+
+    /// <summary>Streams a 278 request from a Stream.</summary>
+    public IAsyncEnumerable<PriorAuth278RequestModel> ParseRequestStreamingAsync(Stream stream) => StreamInternalFromStream<PriorAuth278RequestModel>(stream);
+
+    /// <summary>Streams a 278 response from a Stream.</summary>
+    public IAsyncEnumerable<PriorAuth278ResponseModel> ParseResponseStreamingAsync(Stream stream) => StreamInternalFromStream<PriorAuth278ResponseModel>(stream);
+
+    /// <summary>Processes a 278 request file in batches.</summary>
+    public IAsyncEnumerable<StreamingBatchResult<PriorAuth278RequestModel>> ParseRequestFileInBatchesAsync(string filePath, int batchSize = 500)
+    {
+        var processor = new EdiBatchProcessor<PriorAuth278RequestModel>(batchSize, _options);
+        return processor.ProcessFileAsync(filePath, (g, d) => ParseTxn<PriorAuth278RequestModel>(g, d));
+    }
+
+    /// <summary>Processes a 278 response file in batches.</summary>
+    public IAsyncEnumerable<StreamingBatchResult<PriorAuth278ResponseModel>> ParseResponseFileInBatchesAsync(string filePath, int batchSize = 500)
+    {
+        var processor = new EdiBatchProcessor<PriorAuth278ResponseModel>(batchSize, _options);
+        return processor.ProcessFileAsync(filePath, (g, d) => ParseTxn<PriorAuth278ResponseModel>(g, d));
     }
 }
