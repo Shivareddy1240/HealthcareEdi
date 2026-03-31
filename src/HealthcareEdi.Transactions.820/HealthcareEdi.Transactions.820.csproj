@@ -3,6 +3,12 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <RootNamespace>HealthcareEdi.Transactions.Premium820</RootNamespace>
+    <PackageId>HealthcareEdi.Transactions.820</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>YourName</Authors>
+    <Description>HIPAA X12 5010 Transaction 820 (Payroll Deducted Premium Payment) parser.</Description>
+    <PackageTags>EDI;X12;HIPAA;820;Premium;Payment;Healthcare</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
