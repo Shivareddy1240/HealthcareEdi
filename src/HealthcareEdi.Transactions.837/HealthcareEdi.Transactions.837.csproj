@@ -6,7 +6,7 @@
     <RootNamespace>HealthcareEdi.Transactions.Claim837</RootNamespace>
     <PackageId>HealthcareEdi.Transactions.837</PackageId>
     <Version>1.0.0</Version>
-    <Authors>YourName</Authors>
+    <Authors>We - WithEverone</Authors>
     <Description>HIPAA X12 5010 Transaction 837 (Health Care Claim - Professional, Institutional, Dental) parser for the HealthcareEdi engine.</Description>
     <PackageTags>EDI;X12;HIPAA;837;Claim;Healthcare</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>

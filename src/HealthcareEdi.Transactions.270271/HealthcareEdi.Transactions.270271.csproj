@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -6,7 +6,7 @@
     <RootNamespace>HealthcareEdi.Transactions.Eligibility270271</RootNamespace>
     <PackageId>HealthcareEdi.Transactions.270271</PackageId>
     <Version>1.0.0</Version>
-    <Authors>YourName</Authors>
+    <Authors>We - WithEverone</Authors>
     <Description>HIPAA X12 5010 Transaction 270/271 (Eligibility Inquiry and Response) parser for the HealthcareEdi engine.</Description>
     <PackageTags>EDI;X12;HIPAA;270;271;Eligibility;Healthcare</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>

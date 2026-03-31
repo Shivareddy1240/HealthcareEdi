@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -6,7 +6,7 @@
     <RootNamespace>HealthcareEdi.Core</RootNamespace>
     <PackageId>HealthcareEdi.Core</PackageId>
     <Version>1.0.0</Version>
-    <Authors>YourName</Authors>
+    <Authors>We - WithEverone</Authors>
     <Description>Core engine for parsing HIPAA X12 5010 healthcare EDI files. Provides base models, envelope parsing, delimiter detection, validation, and PHI redaction.</Description>
     <PackageTags>EDI;X12;HIPAA;5010;Healthcare;Parser</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

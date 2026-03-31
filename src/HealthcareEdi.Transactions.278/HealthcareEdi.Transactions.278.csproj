@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -6,7 +6,7 @@
     <RootNamespace>HealthcareEdi.Transactions.PriorAuth278</RootNamespace>
     <PackageId>HealthcareEdi.Transactions.278</PackageId>
     <Version>1.0.0</Version>
-    <Authors>YourName</Authors>
+    <Authors>We - WithEverone</Authors>
     <Description>HIPAA X12 5010 Transaction 278 (Health Care Services Review / Prior Authorization) parser.</Description>
     <PackageTags>EDI;X12;HIPAA;278;PriorAuth;Healthcare</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
